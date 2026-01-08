@@ -39,19 +39,30 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       myInventories: [inventory, ...state.myInventories],
     })),
 
-  updateInventory: (id, updates) =>
-    set((state) => ({
-      inventories: state.inventories.map((inv) =>
+  updateInventory: (id, updates) => {
+    console.log('Store - Updating inventory:', id, updates);
+    const result = set((state) => {
+      const updatedInventories = state.inventories.map((inv) =>
         inv.id === id ? { ...inv, ...updates, updatedAt: new Date() } : inv
-      ),
-      myInventories: state.myInventories.map((inv) =>
+      );
+      const updatedMyInventories = state.myInventories.map((inv) =>
         inv.id === id ? { ...inv, ...updates, updatedAt: new Date() } : inv
-      ),
-      selectedInventory:
-        state.selectedInventory?.id === id
-          ? { ...state.selectedInventory, ...updates, updatedAt: new Date() }
-          : state.selectedInventory,
-    })),
+      );
+      
+      console.log('Store - Updated inventories:', updatedInventories);
+      console.log('Store - Updated myInventories:', updatedMyInventories);
+      
+      return {
+        inventories: updatedInventories,
+        myInventories: updatedMyInventories,
+        selectedInventory:
+          state.selectedInventory?.id === id
+            ? { ...state.selectedInventory, ...updates, updatedAt: new Date() }
+            : state.selectedInventory,
+      };
+    });
+    return result;
+  },
 
   deleteInventory: (id) =>
     set((state) => ({

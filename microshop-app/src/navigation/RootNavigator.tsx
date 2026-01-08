@@ -5,6 +5,7 @@ import { useAuthStore } from '../store';
 import { AuthNavigator } from './AuthNavigator';
 import { MainNavigator } from './MainNavigator';
 import { PublicProductScreen } from '../screens/Public';
+import { CheckoutScreen, CheckoutSuccessScreen } from '../screens/Checkout';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -19,6 +20,8 @@ export const RootNavigator: React.FC = () => {
         <Stack.Screen name="Auth" component={AuthNavigator} />
       )}
       <Stack.Screen name="PublicProduct" component={PublicProductScreen} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} />
+      <Stack.Screen name="CheckoutSuccess" component={CheckoutSuccessScreen} />
     </Stack.Navigator>
   );
 };

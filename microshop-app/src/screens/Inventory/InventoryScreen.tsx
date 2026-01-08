@@ -64,9 +64,16 @@ export const InventoryScreen: React.FC = () => {
             <Text style={[styles.productDate, { color: theme.colors.textSecondary }]}>
               {item.createdAt.toLocaleDateString()}
             </Text>
-            <Text style={[styles.productStatus, { color: item.status === 'active' ? theme.colors.success : theme.colors.textSecondary }]}>
-              {item.status}
-            </Text>
+            <View style={styles.statusContainer}>
+              <Text style={[styles.productStatus, { color: item.status === 'active' ? theme.colors.success : theme.colors.textSecondary }]}>
+                {item.status === 'active' ? 'ACTIVE' : 'DRAFT'}
+              </Text>
+              {item.status === 'draft' && (
+                <Text style={[styles.publishHint, { color: theme.colors.textSecondary }]}>
+                  Tap to publish
+                </Text>
+              )}
+            </View>
             <TouchableOpacity 
               style={[styles.shareButton, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
               onPress={(e) => {
@@ -85,6 +92,23 @@ export const InventoryScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Text style={[styles.title, { color: theme.colors.text }]}>Inventory</Text>
+
+      {/* Help Section */}
+      {myInventories.some(item => item.status === 'draft') && (
+        <View style={[styles.helpSection, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <View style={styles.helpContent}>
+            <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary} />
+            <View style={styles.helpText}>
+              <Text style={[styles.helpTitle, { color: theme.colors.text }]}>
+                Draft items need to be published
+              </Text>
+              <Text style={[styles.helpDescription, { color: theme.colors.textSecondary }]}>
+                Tap on any draft item and press "PUBLISH" to make it available for purchase
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       <View style={styles.tabContainer}>
         <TouchableOpacity
@@ -151,11 +175,35 @@ export const InventoryScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '400',
-    marginBottom: 24,
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  helpSection: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+  },
+  helpContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  helpText: {
+    flex: 1,
+  },
+  helpTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  helpDescription: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -233,6 +281,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     textTransform: 'uppercase',
+  },
+  statusContainer: {
+    alignItems: 'flex-end',
+  },
+  publishHint: {
+    fontSize: 10,
+    marginTop: 2,
   },
   shareButton: {
     width: 32,

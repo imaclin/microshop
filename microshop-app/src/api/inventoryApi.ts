@@ -15,7 +15,9 @@ export interface CreateInventoryRequest {
   shippingCostCents?: number;
 }
 
-export interface UpdateInventoryRequest extends Partial<CreateInventoryRequest> {}
+export interface UpdateInventoryRequest extends Partial<CreateInventoryRequest> {
+  status?: 'draft' | 'active' | 'sold_out' | 'inactive';
+}
 
 export interface InventoryListResponse {
   inventories: Inventory[];

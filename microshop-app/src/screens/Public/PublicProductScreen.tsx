@@ -8,14 +8,13 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Linking,
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useThemeStore } from '../../store';
-import { inventoryApi, checkoutApi } from '../../api';
+import { useThemeStore, useInventoryStore } from '../../store';
+import { checkoutApi } from '../../api';
 import { Inventory, RootStackParamList } from '../../types';
 
 type PublicProductRouteProp = RouteProp<RootStackParamList, 'PublicProduct'>;
@@ -24,34 +23,40 @@ export const PublicProductScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<PublicProductRouteProp>();
   const { theme } = useThemeStore();
+  const { myInventories } = useInventoryStore();
   const { slug } = route.params;
 
   const [inventory, setInventory] = useState<Inventory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadInventory();
-  }, [slug]);
+  }, [slug, myInventories]);
 
-  const loadInventory = async () => {
+  const loadInventory = () => {
     setIsLoading(true);
     setError(null);
 
-    const response = await inventoryApi.getInventoryBySlug(slug);
+    console.log('PublicProduct - Looking for slug:', slug);
+    console.log('PublicProduct - Available inventories:', myInventories);
 
-    if (response.success && response.data) {
-      setInventory(response.data.inventory);
+    // Find inventory by slug from store
+    const foundInventory = myInventories.find(item => item.publicSlug === slug && item.status === 'active');
+    
+    console.log('PublicProduct - Found inventory:', foundInventory);
+
+    if (foundInventory) {
+      setInventory(foundInventory);
     } else {
-      setError(response.error || 'Product not found');
+      setError('Product not found');
     }
 
     setIsLoading(false);
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (!inventory) return;
 
     if (inventory.status !== 'active') {
@@ -64,25 +69,8 @@ export const PublicProductScreen: React.FC = () => {
       return;
     }
 
-    setIsCheckingOut(true);
-
-    const response = await checkoutApi.createCheckoutSession({
-      inventoryId: inventory.id,
-      quantity,
-    });
-
-    if (response.success && response.data) {
-      const canOpen = await Linking.canOpenURL(response.data.session.url);
-      if (canOpen) {
-        await Linking.openURL(response.data.session.url);
-      } else {
-        Alert.alert('Error', 'Cannot open checkout page');
-      }
-    } else {
-      Alert.alert('Error', response.error || 'Failed to create checkout session');
-    }
-
-    setIsCheckingOut(false);
+    // Navigate to checkout screen
+    navigation.navigate('Checkout', { inventoryId: inventory.id, quantity });
   };
 
   const formatPrice = (cents: number) => {
@@ -299,18 +287,11 @@ export const PublicProductScreen: React.FC = () => {
           <TouchableOpacity
             style={[styles.buyButton, { backgroundColor: theme.colors.primary }]}
             onPress={handleCheckout}
-            disabled={isCheckingOut}
           >
-            {isCheckingOut ? (
-              <ActivityIndicator color={theme.colors.background} />
-            ) : (
-              <>
-                <Ionicons name="card-outline" size={20} color={theme.colors.background} />
-                <Text style={[styles.buyButtonText, { color: theme.colors.background }]}>
-                  Buy Now - ${formatPrice(totalPrice)}
-                </Text>
-              </>
-            )}
+            <Ionicons name="card-outline" size={20} color={theme.colors.background} />
+            <Text style={[styles.buyButtonText, { color: theme.colors.background }]}>
+              Buy Now - ${formatPrice(totalPrice)}
+            </Text>
           </TouchableOpacity>
         </View>
       )}

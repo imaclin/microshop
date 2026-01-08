@@ -167,26 +167,43 @@ export const InventoryDetailsScreen: React.FC = () => {
                 }
               ]}
               onPress={() => {
-                // Show status options
-                Alert.alert(
-                  'Status Options',
-                  `Current status: ${inventory.status === 'active' ? 'Active' : 'Draft'}`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { 
-                      text: inventory.status === 'active' ? 'Set to Draft' : 'Set to Active', 
-                      onPress: () => {
-                        const newStatus = inventory.status === 'active' ? 'draft' : 'active';
-                        updateInventory(inventory.id, { status: newStatus });
-                        Alert.alert('Status Updated!', `Item is now ${newStatus === 'active' ? 'active' : 'a draft'}.`);
-                      }
-                    },
-                  ]
-                );
+                // Show status options with better messaging
+                if (inventory.status === 'draft') {
+                  Alert.alert(
+                    'Publish Item',
+                    'Make this item available for purchase in your public store?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { 
+                        text: 'Publish', 
+                        onPress: () => {
+                          console.log('Publishing item:', inventory.id, 'Current status:', inventory.status);
+                          updateInventory(inventory.id, { status: 'active' });
+                          Alert.alert('Published!', 'Your item is now available for purchase.');
+                        }
+                      },
+                    ]
+                  );
+                } else {
+                  Alert.alert(
+                    'Unpublish Item',
+                    'Remove this item from your public store? It will no longer be available for purchase.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { 
+                        text: 'Unpublish', 
+                        onPress: () => {
+                          updateInventory(inventory.id, { status: 'draft' });
+                          Alert.alert('Unpublished', 'Your item is now a draft and not visible to the public.');
+                        }
+                      },
+                    ]
+                  );
+                }
               }}
             >
               <Text style={[styles.statusText, { color: theme.colors.background }]}>
-                {inventory.status === 'active' ? 'ACTIVE' : 'DRAFT'}
+                {inventory.status === 'active' ? 'ACTIVE' : 'PUBLISH'}
               </Text>
             </TouchableOpacity>
           </View>

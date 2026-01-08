@@ -88,6 +88,18 @@ export interface Address {
   country: string;
 }
 
+export interface CheckoutFormData {
+  email: string;
+  firstName: string;
+  lastName: string;
+  address: Address;
+  cardNumber?: string;
+  expiryMonth?: string;
+  expiryYear?: string;
+  cvv?: string;
+  saveCard: boolean;
+}
+
 // Stripe Connect Types
 export interface StripeAccount {
   userId: string;
@@ -188,6 +200,8 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
   PublicProduct: { slug: string };
+  Checkout: { inventoryId: string; quantity?: number };
+  CheckoutSuccess: { orderId: string };
 };
 
 export type AuthStackParamList = {

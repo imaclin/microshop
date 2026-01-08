@@ -1,22 +1,80 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Image,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuthStore, useThemeStore } from '../../store';
+import { useAuthStore, useThemeStore, useInventoryStore } from '../../store';
+import { Inventory } from '../../types';
 
 export const PublicProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { user } = useAuthStore();
   const { theme } = useThemeStore();
+  const { myInventories } = useInventoryStore();
   const insets = useSafeAreaInsets();
+
+  const [inventories, setInventories] = useState<Inventory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadInventories();
+    }, [myInventories])
+  );
+
+  useEffect(() => {
+    loadInventories();
+  }, [myInventories]);
+
+  const loadInventories = (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+    setError(null);
+
+    try {
+      console.log('PublicProfile - Store myInventories:', myInventories);
+      
+      // Filter for active items only for public display
+      const activeItems = myInventories.filter((item: Inventory) => item.status === 'active');
+      console.log('PublicProfile - Active items:', activeItems);
+      
+      setInventories(activeItems);
+    } catch (error) {
+      console.error('PublicProfile - Error loading inventories:', error);
+      setError('Failed to load items');
+    }
+
+    setIsLoading(false);
+    setRefreshing(false);
+  };
+
+  const onRefresh = () => {
+    loadInventories(true);
+  };
+
+  const handleItemPress = (inventory: Inventory) => {
+    console.log('PublicProfile - Clicking item:', inventory.title);
+    console.log('PublicProfile - Item slug:', inventory.publicSlug);
+    console.log('PublicProfile - Item status:', inventory.status);
+    console.log('PublicProfile - Navigating to PublicProduct with slug:', inventory.publicSlug);
+    navigation.navigate('PublicProduct', { slug: inventory.publicSlug });
+  };
 
   const handleBack = () => {
     navigation.goBack();
@@ -40,7 +98,18 @@ export const PublicProfileScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+          />
+        }
+      >
         {/* Profile Header */}
         <View style={[styles.profileHeader, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <View style={[styles.avatar, { backgroundColor: theme.colors.border }]}>
@@ -56,11 +125,13 @@ export const PublicProfileScreen: React.FC = () => {
           </Text>
           <View style={styles.stats}>
             <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: theme.colors.text }]}>12</Text>
+              <Text style={[styles.statNumber, { color: theme.colors.text }]}>{inventories.length}</Text>
               <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Items</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: theme.colors.text }]}>8</Text>
+              <Text style={[styles.statNumber, { color: theme.colors.text }]}>
+                {inventories.filter(item => item.status === 'sold_out').length}
+              </Text>
               <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Sold</Text>
             </View>
             <View style={styles.statItem}>
@@ -79,18 +150,74 @@ export const PublicProfileScreen: React.FC = () => {
           </Text>
         </View>
 
-        {/* Recent Items */}
+        {/* Recent Items List */}
         <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Recent Items</Text>
-          <View style={styles.itemsGrid}>
-            {[1, 2, 3, 4].map((item) => (
-              <View key={item} style={[styles.itemCard, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}>
-                <View style={[styles.itemImage, { backgroundColor: theme.colors.border }]} />
-                <Text style={[styles.itemName, { color: theme.colors.text }]}>Item {item}</Text>
-                <Text style={[styles.itemPrice, { color: theme.colors.primary }]}>$29.99</Text>
-              </View>
-            ))}
-          </View>
+          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Available Items</Text>
+          
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+                Loading items...
+              </Text>
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={24} color={theme.colors.error} />
+              <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
+            </View>
+          ) : inventories.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="cube-outline" size={48} color={theme.colors.textSecondary} />
+              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                No items available for purchase
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.itemsList}>
+              {inventories.map((inventory) => (
+                <TouchableOpacity
+                  key={inventory.id}
+                  style={[styles.itemListItem, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
+                  onPress={() => handleItemPress(inventory)}
+                >
+                  <View style={[styles.itemImageContainer, { backgroundColor: theme.colors.border }]}>
+                    {inventory.images && inventory.images.length > 0 ? (
+                      <Image source={{ uri: inventory.images[0] }} style={styles.itemImage} />
+                    ) : (
+                      <Ionicons name="image-outline" size={24} color={theme.colors.textSecondary} />
+                    )}
+                  </View>
+                  
+                  <View style={styles.itemInfo}>
+                    <Text style={[styles.itemName, { color: theme.colors.text }]} numberOfLines={2}>
+                      {inventory.title}
+                    </Text>
+                    {inventory.description && (
+                      <Text style={[styles.itemDescription, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+                        {inventory.description}
+                      </Text>
+                    )}
+                    <View style={styles.itemMeta}>
+                      <Text style={[styles.itemPrice, { color: theme.colors.primary }]}>
+                        ${(inventory.priceCents / 100).toFixed(2)}
+                      </Text>
+                      <Text style={[styles.itemQuantity, { color: theme.colors.textSecondary }]}>
+                        {inventory.quantityAvailable} available
+                      </Text>
+                    </View>
+                    {inventory.category && (
+                      <Text style={[styles.itemCategory, { color: theme.colors.textSecondary }]}>
+                        {inventory.category}
+                      </Text>
+                    )}
+                  </View>
+                  
+                  <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -210,5 +337,74 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 20,
+  },
+  errorText: {
+    fontSize: 14,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  itemsList: {
+    gap: 12,
+  },
+  itemListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+  },
+  itemImageContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  itemInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  itemDescription: {
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  itemMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  itemQuantity: {
+    fontSize: 12,
+  },
+  itemCategory: {
+    fontSize: 12,
+    marginTop: 4,
   },
 });
